@@ -1076,6 +1076,7 @@ bool ResourceManager::prepare_command_mode_switch(
   auto call_prepare_mode_switch =
     [&start_interfaces, &stop_interfaces, &interfaces_to_string](auto & components)
   {
+    size_t count = 0;
     bool ret = true;
     for (auto & component : components)
     {
@@ -1084,8 +1085,12 @@ bool ResourceManager::prepare_command_mode_switch(
         component.get_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
       {
         if (
-          return_type::OK !=
+          return_type::OK ==
           component.prepare_command_mode_switch(start_interfaces, stop_interfaces))
+        {
+          ++count;
+        }
+        else
         {
           RCUTILS_LOG_ERROR_NAMED(
             "resource_manager",
@@ -1095,7 +1100,7 @@ bool ResourceManager::prepare_command_mode_switch(
         }
       }
     }
-    return ret;
+    return ret || (count > 0);
   };
 
   const bool actuators_result = call_prepare_mode_switch(resource_storage_->actuators_);
@@ -1117,6 +1122,7 @@ bool ResourceManager::perform_command_mode_switch(
 
   auto call_perform_mode_switch = [&start_interfaces, &stop_interfaces](auto & components)
   {
+    size_t count = 0;
     bool ret = true;
     for (auto & component : components)
     {
@@ -1125,8 +1131,12 @@ bool ResourceManager::perform_command_mode_switch(
         component.get_state().id() == lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE)
       {
         if (
-          return_type::OK !=
+          return_type::OK ==
           component.perform_command_mode_switch(start_interfaces, stop_interfaces))
+        {
+          ++count;
+        }
+        else
         {
           RCUTILS_LOG_ERROR_NAMED(
             "resource_manager", "Component '%s' could not perform switch",
@@ -1135,7 +1145,7 @@ bool ResourceManager::perform_command_mode_switch(
         }
       }
     }
-    return ret;
+    return ret || (count > 0);
   };
 
   const bool actuators_result = call_perform_mode_switch(resource_storage_->actuators_);
