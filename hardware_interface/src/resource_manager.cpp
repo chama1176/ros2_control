@@ -1076,7 +1076,8 @@ bool ResourceManager::prepare_command_mode_switch(
   auto call_prepare_mode_switch =
     [&start_interfaces, &stop_interfaces, &interfaces_to_string](auto & components)
   {
-    bool ret = false;
+    size_t count = 0;
+    bool ret = true;
     for (auto & component : components)
     {
       if (
@@ -1087,7 +1088,7 @@ bool ResourceManager::prepare_command_mode_switch(
           return_type::OK ==
           component.prepare_command_mode_switch(start_interfaces, stop_interfaces))
         {
-          ret = true;
+          ++count;
         }
         else
         {
@@ -1095,16 +1096,17 @@ bool ResourceManager::prepare_command_mode_switch(
             "resource_manager",
             "Component '%s' did not accept command interfaces combination: \n%s",
             component.get_name().c_str(), interfaces_to_string().c_str());
+            ret = false;
         }
       }
     }
-    return ret;
+    return ret || (count > 0);
   };
 
   const bool actuators_result = call_prepare_mode_switch(resource_storage_->actuators_);
   const bool systems_result = call_prepare_mode_switch(resource_storage_->systems_);
 
-  return actuators_result || systems_result;
+  return actuators_result && systems_result;
 }
 
 // CM API: Called in "update"-thread
@@ -1120,7 +1122,8 @@ bool ResourceManager::perform_command_mode_switch(
 
   auto call_perform_mode_switch = [&start_interfaces, &stop_interfaces](auto & components)
   {
-    bool ret = false;
+    size_t count = 0;
+    bool ret = true;
     for (auto & component : components)
     {
       if (
@@ -1131,23 +1134,24 @@ bool ResourceManager::perform_command_mode_switch(
           return_type::OK ==
           component.perform_command_mode_switch(start_interfaces, stop_interfaces))
         {
-          ret = true;
+          ++count;
         }
         else
         {
           RCUTILS_LOG_ERROR_NAMED(
             "resource_manager", "Component '%s' could not perform switch",
             component.get_name().c_str());
+          ret = false;
         }
       }
     }
-    return ret;
+    return ret || (count > 0);
   };
 
   const bool actuators_result = call_perform_mode_switch(resource_storage_->actuators_);
   const bool systems_result = call_perform_mode_switch(resource_storage_->systems_);
 
-  return actuators_result || systems_result;
+  return actuators_result && systems_result;
 }
 
 // CM API: Called in "callback/slow"-thread
